@@ -4,14 +4,27 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"orem/config"
 )
 
-const oreServiceURL = "http://localhost:8625/api"
-
 func GetAllActivities(w http.ResponseWriter, r *http.Request) {
-	// Call ORE Service
-	resp, err := http.Get(fmt.Sprintf("%s/v1/activities", oreServiceURL))
+	// Create a new request to forward
+	url := fmt.Sprintf("%s/v1/resort/activities?%s", config.Get().OREServiceURL, r.URL.RawQuery)
+	req, err := http.NewRequestWithContext(r.Context(), "GET", url, nil)
+	if err != nil {
+		http.Error(w, "Error creating request", http.StatusInternalServerError)
+		return
+	}
 
+	// Forward all headers from the original request
+	for key, values := range r.Header {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+
+	// Make the request
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		http.Error(w, "Error calling ore service", http.StatusInternalServerError)
 		return
@@ -21,7 +34,7 @@ func GetAllActivities(w http.ResponseWriter, r *http.Request) {
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		http.Error(w, "Error readin response", http.StatusInternalServerError)
+		http.Error(w, "Error reading response", http.StatusInternalServerError)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -43,8 +56,23 @@ func GetActivityDetails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call ORE Service with the path parameter
-	resp, err := http.Get(fmt.Sprintf("%s/v1/activities/%s", oreServiceURL, idStr))
+	// Create a new request to forward
+	url := fmt.Sprintf("%s/v1/activities/%s%s", config.Get().OREServiceURL, idStr, r.URL.RawQuery)
+	req, err := http.NewRequestWithContext(r.Context(), "GET", url, nil)
+	if err != nil {
+		http.Error(w, "Error creating request", http.StatusInternalServerError)
+		return
+	}
+
+	// Forward all headers from the original request
+	for key, values := range r.Header {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+
+	// Make the request
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		http.Error(w, "Error calling ore service", http.StatusInternalServerError)
 		return
